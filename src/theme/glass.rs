@@ -22,8 +22,7 @@ pub fn hex_to_rgba(hex: &str, alpha: f32) -> String {
 }
 
 pub fn shell_glass_block(palette: &Palette, glass: &GlassSettings) -> String {
-    let alpha = panel_alpha(glass);
-    if alpha.is_none() {
+    let Some(a) = panel_alpha(glass) else {
         return format!(
             "#panel {{
   background-color: {bg};
@@ -33,8 +32,7 @@ pub fn shell_glass_block(palette: &Palette, glass: &GlassSettings) -> String {
             bg = palette.surface,
             fg = palette.foreground,
         );
-    }
-    let a = alpha.unwrap();
+    };
     let panel_bg = hex_to_rgba(&palette.surface, a);
     format!(
         "#panel {{
@@ -51,4 +49,73 @@ pub fn shell_glass_block(palette: &Palette, glass: &GlassSettings) -> String {
         panel_bg = panel_bg,
         fg = palette.foreground,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::theme::model::Palette;
+
+    fn sample() -> Palette {
+        Palette {
+            background: "#1b1b1f".to_string(),
+            surface: "#201f24".to_string(),
+            foreground: "#e4e1e6".to_string(),
+            accent: "#c5c0ff".to_string(),
+            on_accent: "#2c0091".to_string(),
+            error: None,
+            secondary: None,
+            tertiary: None,
+        }
+    }
+
+    fn glass(enabled: bool, strength: GlassStrength) -> GlassSettings {
+        GlassSettings { enabled, strength }
+    }
+
+    #[test]
+    fn alpha_bands_match_spec() {
+        // Spec §4.10: subtle 0.75–0.88, strong 0.60–0.75.
+        assert_eq!(panel_alpha(&glass(false, GlassStrength::Subtle)), None);
+        let subtle = panel_alpha(&glass(true, GlassStrength::Subtle)).unwrap();
+        assert!((0.75..=0.88).contains(&subtle), "subtle {subtle}");
+        let strong = panel_alpha(&glass(true, GlassStrength::Strong)).unwrap();
+        assert!((0.60..=0.75).contains(&strong), "strong {strong}");
+        assert!(strong < subtle, "strong must be more translucent");
+    }
+
+    #[test]
+    fn hex_to_rgba_math() {
+        assert_eq!(hex_to_rgba("#ffffff", 1.0), "rgba(255, 255, 255, 1)");
+        assert_eq!(hex_to_rgba("#201f24", 0.82), "rgba(32, 31, 36, 0.82)");
+        // Invalid input degrades to opaque black, never breaks CSS syntax.
+        assert_eq!(hex_to_rgba("not-a-color", 0.5), "rgba(0,0,0,0.5)");
+    }
+
+    #[test]
+    fn off_path_is_opaque_and_overwrites() {
+        let css = shell_glass_block(&sample(), &glass(false, GlassStrength::Subtle));
+        assert!(css.contains("#panel"));
+        assert!(css.contains("#201f24"), "opaque surface color");
+        assert!(
+            !css.contains("rgba("),
+            "off must emit zero translucent rules"
+        );
+    }
+
+    #[test]
+    fn on_path_tints_panel_and_popups() {
+        let css = shell_glass_block(&sample(), &glass(true, GlassStrength::Strong));
+        assert!(css.contains("rgba(32, 31, 36, 0.68)"));
+        for selector in [
+            "#panel",
+            ".calendar",
+            ".message-list-section",
+            ".notification-banner",
+        ] {
+            assert!(css.contains(selector), "missing {selector}");
+        }
+        // Theme colors still drive text on the tint.
+        assert!(css.contains("#e4e1e6"));
+    }
 }

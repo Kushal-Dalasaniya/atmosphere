@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use gio::Settings;
+use gio::prelude::*;
 
 use super::model::ColorMode;
 use super::validate::checked_hex;
@@ -76,11 +77,7 @@ fn hex_to_hsl(hex: &str) -> Option<(f32, f32)> {
 
 fn circular_distance(a: f32, b: f32) -> f32 {
     let d = (a - b).abs() % 360.0;
-    if d > 180.0 {
-        360.0 - d
-    } else {
-        d
-    }
+    if d > 180.0 { 360.0 - d } else { d }
 }
 
 /// Pick the nearest installed Yaru variant for `accent_hex` in `mode`.
@@ -126,8 +123,7 @@ pub fn apply_icon_match(
     let Some(name) = nearest_yaru_variant(&accent, mode) else {
         return Ok(None);
     };
-    let settings =
-        Settings::new("org.gnome.desktop.interface").map_err(|e| anyhow::anyhow!("{e:?}"))?;
+    let settings = Settings::new("org.gnome.desktop.interface");
     settings.set_string("icon-theme", &name)?;
     Ok(Some(name))
 }
@@ -150,5 +146,38 @@ mod tests {
         assert!(!icon_theme_installed(""));
         assert!(!icon_theme_installed("../x"));
         assert!(!icon_theme_installed("a/b"));
+    }
+
+    #[test]
+    fn circular_distance_wraps() {
+        assert!((circular_distance(350.0, 10.0) - 20.0).abs() < 0.01);
+        assert!((circular_distance(10.0, 350.0) - 20.0).abs() < 0.01);
+        assert!((circular_distance(0.0, 180.0) - 180.0).abs() < 0.01);
+        assert!((circular_distance(90.0, 90.0) - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn achromatic_accents_have_no_hue() {
+        let (_, s) = hex_to_hsl("#808080").unwrap();
+        assert!(s < 0.12, "gray must take the achromatic path");
+        let (_, s) = hex_to_hsl("#1b1b1f").unwrap();
+        assert!(s < 0.12);
+        let (_, s) = hex_to_hsl("#c5c0ff").unwrap();
+        assert!(s > 0.12, "vivid accent must take the hue path");
+    }
+
+    #[test]
+    fn invalid_accents_match_nothing() {
+        assert_eq!(nearest_yaru_variant("not-a-color", ColorMode::Dark), None);
+        assert_eq!(nearest_yaru_variant("#12345", ColorMode::Light), None);
+    }
+
+    #[test]
+    fn disabled_matching_is_noop() {
+        // Never touches gsettings: safe on any machine, no schemas needed.
+        assert_eq!(
+            apply_icon_match(false, ColorMode::Dark, "#ff0000").unwrap(),
+            None
+        );
     }
 }

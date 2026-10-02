@@ -33,12 +33,8 @@ pub fn checked_wallpaper_path(path: &Path) -> Result<PathBuf> {
     if !canonical.starts_with(&home_canon) {
         anyhow::bail!("Could not read the wallpaper: outside home directory");
     }
-    let meta = std::fs::symlink_metadata(&canonical).with_context(|| {
-        format!(
-            "Could not read the wallpaper: {}",
-            canonical.display()
-        )
-    })?;
+    let meta = std::fs::symlink_metadata(&canonical)
+        .with_context(|| format!("Could not read the wallpaper: {}", canonical.display()))?;
     if !meta.is_file() {
         anyhow::bail!("Could not read the wallpaper: not a regular file");
     }
@@ -52,9 +48,8 @@ pub fn importable_regular_file(candidate: &Path) -> Result<PathBuf> {
     let meta = std::fs::symlink_metadata(candidate)
         .with_context(|| format!("Could not read file: {}", candidate.display()))?;
     if meta.file_type().is_symlink() {
-        let target = std::fs::read_link(candidate).with_context(|| {
-            format!("Could not read link: {}", candidate.display())
-        })?;
+        let target = std::fs::read_link(candidate)
+            .with_context(|| format!("Could not read link: {}", candidate.display()))?;
         let resolved = if target.is_absolute() {
             target
         } else {
@@ -63,9 +58,8 @@ pub fn importable_regular_file(candidate: &Path) -> Result<PathBuf> {
                 .unwrap_or_else(|| Path::new("."))
                 .join(target)
         };
-        let canonical = std::fs::canonicalize(&resolved).with_context(|| {
-            format!("Could not resolve link: {}", candidate.display())
-        })?;
+        let canonical = std::fs::canonicalize(&resolved)
+            .with_context(|| format!("Could not resolve link: {}", candidate.display()))?;
         let parent = candidate
             .parent()
             .map(|p| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf()))
@@ -73,9 +67,8 @@ pub fn importable_regular_file(candidate: &Path) -> Result<PathBuf> {
         if !canonical.starts_with(&parent) {
             anyhow::bail!("Refusing to import a link that escapes its directory");
         }
-        let tmeta = std::fs::symlink_metadata(&canonical).with_context(|| {
-            format!("Could not read link target: {}", canonical.display())
-        })?;
+        let tmeta = std::fs::symlink_metadata(&canonical)
+            .with_context(|| format!("Could not read link target: {}", canonical.display()))?;
         if !tmeta.is_file() {
             anyhow::bail!("Only regular image files can be imported");
         }
@@ -119,5 +112,32 @@ mod tests {
     fn rejects_traversal_outside_home() {
         assert!(checked_wallpaper_path(Path::new("/etc/hostname")).is_err());
         assert!(checked_wallpaper_path(Path::new("/nonexistent-xyz.jpg")).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_symlink_escape_on_import() {
+        use std::os::unix::fs::symlink;
+        let dir = std::env::temp_dir().join("atmosphere-symlink-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("lib")).unwrap();
+        let outside = dir.join("outside.jpg");
+        std::fs::write(&outside, b"fake").unwrap();
+        let inside = dir.join("lib").join("inside.jpg");
+        std::fs::write(&inside, b"fake").unwrap();
+
+        // Link inside the library pointing outside its directory: refused.
+        let escape = dir.join("lib").join("escape.jpg");
+        symlink(&outside, &escape).unwrap();
+        assert!(importable_regular_file(&escape).is_err());
+
+        // Link resolving inside its own directory: accepted.
+        let local = dir.join("lib").join("local.jpg");
+        symlink(&inside, &local).unwrap();
+        assert!(importable_regular_file(&local).is_ok());
+
+        // Plain regular file: accepted.
+        assert!(importable_regular_file(&inside).is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

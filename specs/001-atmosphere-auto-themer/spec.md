@@ -548,7 +548,7 @@ sudo apt install -y \
   build-essential pkg-config git curl \
   libgtk-4-dev libadwaita-1-dev \
   libglib2.0-dev libcairo2-dev libpango1.0-dev \
-  libgdk-pixbuf2.0-dev libgraphene-1.0-dev \
+  libgdk-pixbuf-2.0-dev libgraphene-1.0-dev \
   gsettings-desktop-schemas gnome-shell \
   gnome-shell-extensions \
   adw-gtk3-theme

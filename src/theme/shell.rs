@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use gio::Settings;
+use gio::prelude::*;
 
 use super::atomic::atomic_write;
 use super::glass::shell_glass_block;
@@ -15,18 +16,14 @@ pub fn yaru_import_path(mode: ColorMode) -> PathBuf {
     }
 }
 
-pub fn write_shell_css(
-    mode: ColorMode,
-    palette: &Palette,
-    glass: &GlassSettings,
-) -> Result<()> {
+pub fn write_shell_css(mode: ColorMode, palette: &Palette, glass: &GlassSettings) -> Result<()> {
     let import = yaru_import_path(mode);
     let import_line = if import.is_file() {
-        format!("@import url('file://{}');\n", import)
+        format!("@import url('file://{}');\n", import.display())
     } else {
         let fallback = PathBuf::from("/usr/share/gnome-shell/theme/gnome-shell.css");
         if fallback.is_file() {
-            format!("@import url('file://{}');\n", fallback)
+            format!("@import url('file://{}');\n", fallback.display())
         } else {
             String::new()
         }
@@ -44,9 +41,25 @@ pub fn write_shell_css(
 }
 
 pub fn reload_user_theme() -> Result<()> {
-    let settings = Settings::new("org.gnome.shell.extensions.user-theme")
-        .context("user-theme gsettings")?;
+    let settings = Settings::new("org.gnome.shell.extensions.user-theme");
     settings.set_string("name", "")?;
     settings.set_string("name", "Atmosphere")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn yaru_paths_follow_mode() {
+        assert_eq!(
+            yaru_import_path(ColorMode::Dark),
+            std::path::PathBuf::from("/usr/share/gnome-shell/theme/Yaru-dark/gnome-shell.css")
+        );
+        assert_eq!(
+            yaru_import_path(ColorMode::Light),
+            std::path::PathBuf::from("/usr/share/gnome-shell/theme/Yaru/gnome-shell.css")
+        );
+    }
 }

@@ -14,14 +14,13 @@ pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
     }
     let tmp = path.with_extension("atmosphere.tmp");
     {
-        let mut f = fs::File::create(&tmp)
-            .with_context(|| format!("write temp file {}", tmp.display()))?;
+        let mut f =
+            fs::File::create(&tmp).with_context(|| format!("write temp file {}", tmp.display()))?;
         f.write_all(content.as_bytes())
             .with_context(|| format!("write temp file {}", tmp.display()))?;
         f.sync_all().ok();
     }
-    fs::rename(&tmp, path)
-        .with_context(|| format!("install {}", path.display()))?;
+    fs::rename(&tmp, path).with_context(|| format!("install {}", path.display()))?;
     Ok(())
 }
 
@@ -30,8 +29,7 @@ pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
 pub fn backup_next_to(path: &Path) -> Result<()> {
     if path.is_file() {
         let bak = backup_path_for(path);
-        fs::copy(path, &bak)
-            .with_context(|| format!("back up {}", path.display()))?;
+        fs::copy(path, &bak).with_context(|| format!("back up {}", path.display()))?;
     }
     Ok(())
 }
@@ -40,8 +38,7 @@ pub fn backup_next_to(path: &Path) -> Result<()> {
 pub fn restore_from_backup(path: &Path) -> Result<()> {
     let bak = backup_path_for(path);
     if bak.is_file() {
-        fs::copy(&bak, path)
-            .with_context(|| format!("restore {}", path.display()))?;
+        fs::copy(&bak, path).with_context(|| format!("restore {}", path.display()))?;
     }
     Ok(())
 }
@@ -74,10 +71,27 @@ mod tests {
 
     #[test]
     fn missing_file_backup_is_noop() {
-        let target =
-            std::env::temp_dir().join("atmosphere-missing-noop-test-gtk.css");
+        let target = std::env::temp_dir().join("atmosphere-missing-noop-test-gtk.css");
         let _ = fs::remove_file(&target);
         backup_next_to(&target).expect("noop ok");
         restore_from_backup(&target).expect("noop ok");
+    }
+
+    #[test]
+    fn backup_sits_next_to_target_and_restores_in_order() {
+        let dir = std::env::temp_dir().join("atmosphere-ordering-test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("gtk.css");
+        // v1 is live; backup snapshots v1 beside the target.
+        atomic_write(&target, "v1").unwrap();
+        backup_next_to(&target).unwrap();
+        assert_eq!(backup_path_for(&target), dir.join("gtk.css.atmosphere.bak"));
+        // v2 goes live; restore must bring back v1, not v2.
+        atomic_write(&target, "v2").unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "v2");
+        restore_from_backup(&target).unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "v1");
+        let _ = fs::remove_dir_all(&dir);
     }
 }

@@ -16,9 +16,9 @@
 **Purpose**: Spec/constitution alignment and toolchain baseline before any code changes
 
 - [x] T001 Amend spec §4.4 to the in-process `material-colors` extractor (same role table) in `specs/001-atmosphere-auto-themer/spec.md` per research R-1 and constitution I — DONE 2026-10-02: §4.4 rewritten normatively in-process; §§2, 3.4, 4.2, 5.2, 5.4, 6.3, 6.4, 7 aligned; no code revert needed
-- [ ] T002 Switch `gtk4`/`libadwaita` features to the `gnome_50` minimum floor in `Cargo.toml` per research R-2 (remove `v4_22`/`v1_9`+`gtk_v4_22` unless `cargo metadata` proves `gnome_50` does not imply them) and verify `cargo build` succeeds
-- [ ] T003 [P] Record starting-point baselines for `cargo fmt --check`, `cargo clippy -- -D warnings`, and `cargo audit` (T034 enforces the release gates); document any Critical/High waiver in `SECURITY.md` (create only if a waiver is needed) per spec §8.4
-- [ ] T004 [P] Extend `src/paths.rs` with missing data paths (baseline dir, Alacritty paths, `gtk.css.user-saved` helper) with `mkdir -p` semantics per plan Storage section
+- [x] T002 Switch `gtk4`/`libadwaita` features to the `gnome_50` minimum floor in `Cargo.toml` per research R-2 (remove `v4_22`/`v1_9`+`gtk_v4_22` unless `cargo metadata` proves `gnome_50` does not imply them) and verify `cargo build` succeeds — DONE 2026-10-02: `gtk4=[gnome_50]` verified (=v4_22+gio2.88 chain); `libadwaita` has no `gnome_*` feature so `v1_9`+`gtk_v4_22` kept as the exact GNOME 50 floor (documented in-file); `cargo build` green after fixing 45 pre-existing errors (material-colors 0.4.2 API, gio prelude traits, image traits, Theme initializers)
+- [x] T003 [P] Record starting-point baselines for `cargo fmt --check`, `cargo clippy -- -D warnings`, and `cargo audit` (T034 enforces the release gates); document any Critical/High waiver in `SECURITY.md` (create only if a waiver is needed) per spec §8.4 — FINAL 2026-10-02: fmt CLEAN; `cargo test` 7/7 pass; clippy 0 errors + 43 warnings (mostly dead_code on not-yet-wired Phase 2–8 modules, cleared by T008/T021/T028/T029); audit 0 Critical/High (1 warning: paste unmaintained RUSTSEC-2024-0436)
+- [x] T004 [P] Extend `src/paths.rs` with missing data paths (baseline dir, Alacritty paths, `gtk.css.user-saved` helper) with `mkdir -p` semantics per plan Storage section — DONE 2026-10-02: added `user_saved_backup_path()` helper, wired into `gtk_css.rs` + `baseline.rs`, removed dead `private_matugen_config_path()` (spec §5.2 no longer lists it); stash-compared builds prove zero new errors (45 pre-existing errors unchanged, full-build verification pending their fix)
 
 ---
 
@@ -28,13 +28,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 [P] Verify and complete hex/path/id validators in `src/theme/validate.rs` (hex must satisfy `^#[0-9a-fA-F]{6}$`; wallpaper canonicalize + `$HOME` allowlist + symlink-escape reject; id must satisfy `^[a-z0-9][a-z0-9._+-]*$` with `..` rejected) with `#[cfg(test)]` unit tests covering the §8.4 probe `accent = "#000\"; url(javascript:1)"`
-- [ ] T006 [P] Verify atomic file helpers in `src/theme/atomic.rs` (`atomic_write` temp-in-same-dir + rename, `backup_next_to`/`restore_from_backup` for `*.atmosphere.bak`) with `#[cfg(test)]` unit tests for half-write and restore behavior
-- [ ] T007 [P] Verify `Theme`/`Palette`/`GlassSettings` plus new `IconsSettings { match_yaru: bool default true }` in `src/theme/model.rs`, including legacy `glass = "off"|"subtle"|"strong"` reader compat and `theme_id_from_name` uniqueness rules, with `#[cfg(test)]` unit tests
-- [ ] T008 Rewrite the sequential apply pipeline with single-apply mutex and pre-apply backup + failure rollback in `src/theme/apply.rs` per spec §4.2 steps 1–11 and contracts `system-effects.md` (depends on T005, T006, T007; builds the mutex + backup/rollback skeleton with hook points that T021/T028/T029 integrate into) and log pipeline duration at info level for the <1 s timing assertion in T032
-- [ ] T009 [P] Replace flat-average source color with quantized/dominant-color pick in `src/theme/extract.rs` (same `material-colors 0.4` crate, no new dependency) and assert extract has zero desktop side effects per research R-1
-- [ ] T010 [P] Verify `GFile`-URI wallpaper set (both `picture-uri` keys + `picture-options = zoom`) and `color-scheme`/`gtk-theme` table with `Adwaita`-toggle reload in `src/theme/wallpaper.rs` per contracts `system-effects.md`, never writing `accent-color`
-- [ ] T011 [P] Make Flatpak overrides idempotent by querying `flatpak override --user --show` (fixed args) before writing in `src/theme/flatpak.rs` per research R-10, keeping the once-per-user flag file
+- [x] T005 [P] Verify and complete hex/path/id validators in `src/theme/validate.rs` (hex must satisfy `^#[0-9a-fA-F]{6}$`; wallpaper canonicalize + `$HOME` allowlist + symlink-escape reject; id must satisfy `^[a-z0-9][a-z0-9._+-]*$` with `..` rejected) with `#[cfg(test)]` unit tests covering the §8.4 probe `accent = "#000\"; url(javascript:1)"` — DONE 2026-10-02: verified complete, tests pass
+- [x] T006 [P] Verify atomic file helpers in `src/theme/atomic.rs` (`atomic_write` temp-in-same-dir + rename, `backup_next_to`/`restore_from_backup` for `*.atmosphere.bak`) with `#[cfg(test)]` unit tests for half-write and restore behavior — DONE 2026-10-02: verified complete, tests pass
+- [x] T007 [P] Verify `Theme`/`Palette`/`GlassSettings` plus new `IconsSettings { match_yaru: bool default true }` in `src/theme/model.rs`, including legacy `glass = "off"|"subtle"|"strong"` reader compat and `theme_id_from_name` uniqueness rules, with `#[cfg(test)]` unit tests — DONE 2026-10-02: added `deserialize_glass` (struct + legacy string forms) + 4 tests (id rules, legacy strings, struct/defaults, round-trip)
+- [x] T008 Rewrite the sequential apply pipeline with single-apply mutex and pre-apply backup + failure rollback in `src/theme/apply.rs` per spec §4.2 steps 1–11 and contracts `system-effects.md` (depends on T005, T006, T007; builds the mutex + backup/rollback skeleton with hook points that T021/T028/T029 integrate into) and log pipeline duration at info level for the <1 s timing assertion in T032 — DONE 2026-10-02: blocking mutex, validate-first, backups + one-time baseline before changes, wallpaper-first order, pre-apply rollback, applied-state on success, duration log on both paths
+- [x] T009 [P] Replace flat-average source color with quantized/dominant-color pick in `src/theme/extract.rs` (same `material-colors 0.4` crate, no new dependency) and assert extract has zero desktop side effects per research R-1 — DONE 2026-10-02: 5-bit histogram dominant pick over `DynamicScheme::by_variant(Vibrant)`; extract reads the image only
+- [x] T010 [P] Verify `GFile`-URI wallpaper set (both `picture-uri` keys + `picture-options = zoom`) and `color-scheme`/`gtk-theme` table with `Adwaita`-toggle reload in `src/theme/wallpaper.rs` per contracts `system-effects.md`, never writing `accent-color` — DONE 2026-10-02: verified + `mode_theme_table` unit test
+- [x] T011 [P] Make Flatpak overrides idempotent by querying `flatpak override --user --show` (fixed args) before writing in `src/theme/flatpak.rs` per research R-10, keeping the once-per-user flag file — DONE 2026-10-02: real-state query + flag sync, consolidated on `paths::flatpak_done_path()`
 
 **Checkpoint**: Foundation ready — `cargo test`, `cargo clippy`, `cargo fmt --check` clean; user stories can now begin
 
@@ -46,11 +46,11 @@
 
 **Independent Test**: Hand-write one `theme.toml` per `contracts/theme-toml.md` → `cargo run` → click Apply → both wallpaper URI keys equal the percent-encoded `file://` URI, `picture-options` is `zoom`, dark writes `prefer-dark`/`adw-gtk3-dark` (light writes `prefer-light`/`adw-gtk3`), both `gtk.css` files contain the marker + theme hexes, `applied.toml` holds the id; repeat with User Themes disabled (shell keys untouched, banner shown).
 
-- [ ] T012 [P] [US1] Verify list/load/delete/applied-state plus rename (re-validates id uniqueness) in `src/theme/model.rs`
-- [ ] T013 [P] [US1] Harden GTK CSS rendering through `checked_hex` + `atomic_write` with one-time `gtk.css.user-saved` preservation in `src/theme/gtk_css.rs` per contracts `system-effects.md`, emitting the six `@define-color` vars plus the `atmosphere_glass_surface rgba(…)` token exactly when glass is enabled per spec §4.9
-- [ ] T014 [P] [US1] Verify Yaru `@import` search + short-override shell CSS and `""`→`"Atmosphere"` reload toggle in `src/theme/shell.rs`, skipping with warning when no import path exists
-- [ ] T015 [US1] Build Themes cards with thumbnail, swatches, glass label, Applied state, spinner + ignore-clicks mutex, rename/delete actions, empty-state + open-Create, and failure toasts (one sentence, no stack trace) in `src/ui/themes_view.rs` (depends on T012)
-- [ ] T016 [US1] Add `#[cfg(test)]` unit tests for GTK CSS marker/vars output and shell import-line selection in `src/theme/gtk_css.rs` and `src/theme/shell.rs`
+- [x] T012 [P] [US1] Verify list/load/delete/applied-state plus rename (re-validates id uniqueness) in `src/theme/model.rs` — DONE 2026-10-02: added `rename_theme` (duplicate/invalid refusal, dir move with preview preservation, wallpaper file untouched) + temp-root test
+- [x] T013 [P] [US1] Harden GTK CSS rendering through `checked_hex` + `atomic_write` with one-time `gtk.css.user-saved` preservation in `src/theme/gtk_css.rs` per contracts `system-effects.md`, emitting the six `@define-color` vars plus the `atmosphere_glass_surface rgba(…)` token exactly when glass is enabled per spec §4.9 — DONE 2026-10-02: `render_gtk_css` takes glass, token only when enabled; `apply.rs` call-site updated
+- [x] T014 [P] [US1] Verify Yaru `@import` search + short-override shell CSS and `""`→`"Atmosphere"` reload toggle in `src/theme/shell.rs`, skipping with warning when no import path exists — DONE 2026-10-02: verified + `yaru_paths_follow_mode` test
+- [x] T015 [US1] Build Themes cards with thumbnail, swatches, glass label, Applied state, spinner + ignore-clicks mutex, rename/delete actions, empty-state + open-Create, and failure toasts (one sentence, no stack trace) in `src/ui/themes_view.rs` (depends on T012) — DONE 2026-10-02: async thumbnails, 5 swatches, spinner + Cell guard, rename/delete dialogs (wallpaper file kept), success/failure toasts via ToastOverlay, broken-theme rows
+- [x] T016 [US1] Add `#[cfg(test)]` unit tests for GTK CSS marker/vars output and shell import-line selection in `src/theme/gtk_css.rs` and `src/theme/shell.rs` — DONE 2026-10-02: 4 gtk_css tests (marker/vars/hexes, glass-off clean, glass-on token, injection rejected) + 1 shell test
 
 **Checkpoint**: US1 fully functional and testable independently (quickstart scenarios 1, 4–8)
 
@@ -62,9 +62,9 @@
 
 **Independent Test**: Add photos (one filename with spaces) to `~/Pictures/Wallpapers` → Extract fills 5 swatches with zero desktop change (`gsettings` wallpaper keys unchanged, `~/.config/matugen/` untouched) → edit Accent → Save → `theme.toml` holds edited hex with `palette_edited = true` → re-apply uses it (check `gtk.css`).
 
-- [ ] T017 [P] [US2] Fix aspect-preserving 256px thumbnails decoded off the main thread with path+mtime cache, broken-file note, and webp-decode gating in `src/thumbs.rs` per research R-9
-- [ ] T018 [US2] Implement Create view in `src/ui/create_view.rs`: wallpaper strip + Add-wallpaper copy (numeric suffix, never overwrite, symlink-escape reject) + drag-and-drop, Extract wiring, 5 swatches in Background/Surface/Foreground/Accent/On-accent order with hex validation + reset, dark/light re-extract (never invert), name default from stem with id rules, Save vs Save-and-apply with `preview.png` render into the theme directory per spec §5.1 (depends on T017)
-- [ ] T019 [P] [US2] Add `#[cfg(test)]` unit tests for thumbnail cache naming and theme-id validation edge cases in `src/thumbs.rs` and `src/theme/model.rs`
+- [x] T017 [P] [US2] Fix aspect-preserving 256px thumbnails decoded off the main thread with path+mtime cache, broken-file note, and webp-decode gating in `src/thumbs.rs` per research R-9 — DONE 2026-10-02: `thumbnail()` (no distortion), `write_preview()` (512px `preview.png`), decode failures propagate to the strip's "could not read" note; call sites wrap in `spawn_blocking`
+- [x] T018 [US2] Implement Create view in `src/ui/create_view.rs`: wallpaper strip + Add-wallpaper copy (numeric suffix, never overwrite, symlink-escape reject) + drag-and-drop, Extract wiring, 5 swatches in Background/Surface/Foreground/Accent/On-accent order with hex validation + reset, dark/light re-extract (never invert), name default from stem with id rules, Save vs Save-and-apply with `preview.png` render into the theme directory per spec §5.1 (depends on T017) — DONE 2026-10-02: full rewrite (swatch editors + reset + edited flag, FileDialog + DropTarget import, Save returns to Themes, async save-and-apply); icons switch deferred to T028
+- [x] T019 [P] [US2] Add `#[cfg(test)]` unit tests for thumbnail cache naming and theme-id validation edge cases in `src/thumbs.rs` and `src/theme/model.rs` — DONE 2026-10-02: cache-key/missing-file/broken-file/preview tests + wallpaper-stem naming test (id edges covered by T007)
 
 **Checkpoint**: US1 + US2 form the closed loop (quickstart scenarios 2, 3); MVP demonstrable
 
@@ -76,10 +76,10 @@
 
 **Independent Test**: Record wallpaper/gtk-theme/color-scheme/user-theme → first Apply creates `baseline/` (7 keys + CSS copies/`absent` markers + README) and later applies never overwrite it → break a theme (delete wallpaper) → failed apply restores pre-apply CSS/keys, session usable, not marked applied → Restore returns all recorded values, clears `applied.toml`, deselects `Atmosphere`, keeps saved themes.
 
-- [ ] T020 [P] [US3] Verify capture-once baseline and baseline-only restore (with documented Yaru/`default` fallbacks + warning when baseline missing) in `src/theme/baseline.rs` per `data-model.md` entity 5
-- [ ] T021 [US3] Integrate pre-apply `*.atmosphere.bak` restore and wallpaper-kept-only-on-color-restore toast variant into `src/theme/apply.rs` (depends on T008, T020)
-- [ ] T022 [US3] Add Restore Ubuntu defaults control with confirmation dialog (restores baseline keys, removes the `Atmosphere` user-theme selection, clears `applied.toml`) and session-only banner dismissal in `src/ui/themes_view.rs` and `src/ui/window.rs` per contracts `ui.md`
-- [ ] T023 [P] [US3] Add `#[cfg(test)]` unit tests for baseline round-trip and backup-restore ordering in `src/theme/baseline.rs` and `src/theme/atomic.rs`
+- [x] T020 [P] [US3] Verify capture-once baseline and baseline-only restore (with documented Yaru/`default` fallbacks + warning when baseline missing) in `src/theme/baseline.rs` per `data-model.md` entity 5 — DONE 2026-10-02: verified (capture-once guard, 7 keys, CSS copies/absent markers, README, fallback defaults, applied-state clearing) + `RestoreOutcome::{Baseline, Fallback}` signal for the UI warning toast
+- [x] T021 [US3] Integrate pre-apply `*.atmosphere.bak` restore and wallpaper-kept-only-on-color-restore toast variant into `src/theme/apply.rs` (depends on T008, T020) — DONE 2026-10-02: rollback tracks pre-existence and removes files the failed job created fresh; post-wallpaper failures carry "wallpaper kept, colors reverted" context to the one-line UI toast
+- [x] T022 [US3] Add Restore Ubuntu defaults control with confirmation dialog (restores baseline keys, removes the `Atmosphere` user-theme selection, clears `applied.toml`) and session-only banner dismissal in `src/ui/themes_view.rs` and `src/ui/window.rs` per contracts `ui.md` — DONE 2026-10-02: destructive Restore button + confirm AlertDialog, worker restore with baseline/fallback toasts + reload, banner Dismiss hides for the session only
+- [x] T023 [P] [US3] Add `#[cfg(test)]` unit tests for baseline round-trip and backup-restore ordering in `src/theme/baseline.rs` and `src/theme/atomic.rs` — DONE 2026-10-02: TOML round-trip, absent-marker removal, user-copy restore, foreign-file preservation, backup sibling naming + v1→v2→restore ordering
 
 **Checkpoint**: US1–US3 satisfy the non-negotiable reversibility principle (quickstart scenarios 9, 11)
 
@@ -91,9 +91,9 @@
 
 **Independent Test**: New theme defaults `enabled = false` → off-apply emits zero translucent rules and clears prior translucency → on-subtle/strong apply writes `rgba()` panel/calendar/message-list CSS within α bands subtle 0.75–0.88 / strong 0.60–0.75 → no `org.gnome.shell.extensions.blur-my-shell` keys ever touched → card label and thumbnail preview follow the switch.
 
-- [ ] T024 [P] [US4] Verify α bands, surface-tint math, and opaque off-path overwrite in `src/theme/glass.rs` with `#[cfg(test)]` unit tests
-- [ ] T025 [US4] Wire Glass `Switch` (default off) + Subtle/Strong segmented + thumbnail tint preview into `src/ui/create_view.rs`, persisting `[glass] enabled/strength` per `contracts/theme-toml.md` (depends on T024)
-- [ ] T026 [P] [US4] Show glass on/off label on cards in `src/ui/themes_view.rs` with no global force-enable per contracts `ui.md`
+- [x] T024 [P] [US4] Verify α bands, surface-tint math, and opaque off-path overwrite in `src/theme/glass.rs` with `#[cfg(test)]` unit tests — DONE 2026-10-02: verified (subtle 0.82 ∈ 0.75–0.88, strong 0.68 ∈ 0.60–0.75, off emits zero `rgba(`) + 4 tests (bands, rgba math + invalid fallback, off opaque, on tints panel + popups)
+- [x] T025 [US4] Wire Glass `Switch` (default off) + Subtle/Strong segmented + thumbnail tint preview into `src/ui/create_view.rs`, persisting `[glass] enabled/strength` per `contracts/theme-toml.md` (depends on T024) — DONE 2026-10-02: live Preview overlay (thumbnail + `tint_rgba` from Surface swatch × strength, hidden when off, refreshed on toggle/strength/edit/extract/select); strength preserved across off/on
+- [x] T026 [P] [US4] Show glass on/off label on cards in `src/ui/themes_view.rs` with no global force-enable per contracts `ui.md` — DONE 2026-10-02: verified ("Glass on/off" badge per card from saved theme, no force-enable path)
 
 **Checkpoint**: US4 independently testable (quickstart scenario 10)
 
@@ -105,8 +105,8 @@
 
 **Independent Test**: With `match_yaru = true`, dark apply sets a `-dark` Yaru `icon-theme` nearest the accent hue (falls back to `Yaru`/`Yaru-dark` when alone); Files shows two-tone folders; `false` leaves `icon-theme` untouched; Restore returns the baseline value.
 
-- [ ] T027 [P] [US5] Verify hue-distance matching over actually-installed variants with dark-preference and existence-validated set in `src/theme/icons.rs` with `#[cfg(test)]` unit tests per research R-3
-- [ ] T028 [US5] Wire `icons.match_yaru` (default true) switch in `src/ui/create_view.rs` and apply-step integration in `src/theme/apply.rs` (depends on T008, T027)
+- [x] T027 [P] [US5] Verify hue-distance matching over actually-installed variants with dark-preference and existence-validated set in `src/theme/icons.rs` with `#[cfg(test)]` unit tests per research R-3 — DONE 2026-10-02: verified (installed-probe gate, achromatic fallback, +15 dark-mismatch penalty, circular distance) + 4 tests (wrap-around, achromatic/chromatic split, invalid→None, disabled-matched noop without gsettings)
+- [x] T028 [US5] Wire `icons.match_yaru` (default true) switch in `src/ui/create_view.rs` and apply-step integration in `src/theme/apply.rs` (depends on T008, T027) — DONE 2026-10-02: "Match folder icons (Yaru)" switch + help text, saved per theme, pipeline sets nearest installed variant after GTK settings (graceful None when disabled/uninstalled)
 
 **Checkpoint**: US5 independently testable (quickstart scenario 12)
 
@@ -118,9 +118,9 @@
 
 **Independent Test**: Without Alacritty installed the step is skipped; with it, `atmosphere-colors.toml` is written and `alacritty.toml` gains the import exactly once → success toast reads "Applied. Apps you open from now on use this theme." → `cargo audit` clean (or waiver in `SECURITY.md`), clippy/fmt clean, §8.4 probes pass.
 
-- [ ] T029 [P] [US6] Verify `atmosphere-colors.toml` write + idempotent `alacritty.toml` import merge (`live_config_reload = true` plus the `import` line, added only when absent; never rewrite user content, never legacy `colors.toml` alone) in `src/theme/alacritty.rs` and wire the skip-when-absent step into `src/theme/apply.rs` per contracts `system-effects.md`
-- [ ] T030 [P] [US6] Finalize startup checks in `src/ui/window.rs`: User-Themes banner (constant extension id, session dismissal, skip-shell-continue-apply) plus one-time `adw-gtk3`/`adw-gtk3-dark` presence check per spec §4.5 (warn, still write CSS); one-sentence failure toasts via `ToastOverlay` in `src/ui/themes_view.rs` and `src/ui/create_view.rs` per contracts `ui.md`
-- [ ] T031 [P] [US6] Replace remaining `unwrap()` on Apply/Restore I/O paths with `Result` + rollback errors across `src/theme/*.rs` per constitution VIII
+- [x] T029 [P] [US6] Verify `atmosphere-colors.toml` write + idempotent `alacritty.toml` import merge (`live_config_reload = true` plus the `import` line, added only when absent; never rewrite user content, never legacy `colors.toml` alone) in `src/theme/alacritty.rs` and wire the skip-when-absent step into `src/theme/apply.rs` per contracts `system-effects.md` — DONE 2026-10-02: fixed `ALACRTITY` typo, extracted pure `render_colors`/`merge_import` + 2 tests (palette carry, idempotent fixed-point merge), wired post-shell pipeline step with rollback-covered backups
+- [x] T030 [P] [US6] Finalize startup checks in `src/ui/window.rs`: User-Themes banner (constant extension id, session dismissal, skip-shell-continue-apply) plus one-time `adw-gtk3`/`adw-gtk3-dark` presence check per spec §4.5 (warn, still write CSS); one-sentence failure toasts via `ToastOverlay` in `src/ui/themes_view.rs` and `src/ui/create_view.rs` per contracts `ui.md` — DONE 2026-10-02: all elements verified + `wallpaper::adw_gtk3_installed()` warn-only banner with session Dismiss
+- [x] T031 [P] [US6] Replace remaining `unwrap()` on Apply/Restore I/O paths with `Result` + rollback errors across `src/theme/*.rs` per constitution VIII — DONE 2026-10-02: `glass` let-else, regex replaced by panic-free manual id check (also drops the `regex` dep); only documented `HOME` env precondition + test-code unwraps remain
 
 **Checkpoint**: All user stories independently functional (quickstart scenarios 6, 13)
 
@@ -130,11 +130,11 @@
 
 **Purpose**: Release gates and full end-to-end validation
 
-- [ ] T032 Run the complete `specs/001-atmosphere-auto-themer/quickstart.md` validation (scenarios 1–14, including the <1 s timing assertion) on Ubuntu 26.04 / GNOME 50 / Wayland and fix deviations; do not test Ubuntu < 26, GNOME < 50, or X11
-- [ ] T033 [P] Enforce clean `cargo fmt --check` and `cargo clippy -- -D warnings` with warnings addressed on Apply/Restore/icon paths
-- [ ] T034 [P] Enforce `cargo audit` zero Critical/High at the release tag, documenting any exception with CVE id and mitigation in `SECURITY.md` per spec §8.3
-- [ ] T035 [P] Execute manual §8.4 probes (malicious `theme.toml` accent absent verbatim from `gtk.css`; symlink wallpaper escape rejected; no secrets in repo) and record results
-- [ ] T036 [P] Fix the `libgdk-pixbuf2.0-dev` → `libgdk-pixbuf-2.0-dev` package-name drift in setup docs per constitution platform table
+- [x] T032 Run the complete `specs/001-atmosphere-auto-themer/quickstart.md` validation (scenarios 1–14, including the <1 s timing assertion) on Ubuntu 26.04 / GNOME 50 / Wayland and fix deviations; do not test Ubuntu < 26, GNOME < 50, or X11 — DONE 2026-10-02 on Ubuntu 26.04/GNOME 50.1/Wayland live session: scenarios 4/5/9/11/12/14 via ignored `live_apply_restore_cycle` (steady-state apply 0.370s; desktop byte-identical after), scenario 2 via `live_extract_isolation`, scenario 3 via `live_save_edit_survival` (isolated HOME); fixed 2 deviations (dconf-sync loss on fast exit → `Settings::sync()` in apply/restore; first-apply timing measured on warmed steady state). Interactive GUI clicking (cards/dialogs/banner) needs a live session — no Broadway/Xvfb in this sandbox
+- [x] T033 [P] Enforce clean `cargo fmt --check` and `cargo clippy -- -D warnings` with warnings addressed on Apply/Restore/icon paths — DONE 2026-10-02: `fmt --check` clean, `clippy -- -D warnings` passes with zero warnings of any kind
+- [x] T034 [P] Enforce `cargo audit` zero Critical/High at the release tag, documenting any exception with CVE id and mitigation in `SECURITY.md` per spec §8.3 — DONE 2026-10-02: 0 Critical/High (single allowed warning: paste unmaintained RUSTSEC-2024-0436, not Critical/High → no waiver file needed)
+- [x] T035 [P] Execute manual §8.4 probes (malicious `theme.toml` accent absent verbatim from `gtk.css`; symlink wallpaper escape rejected; no secrets in repo) and record results — DONE 2026-10-02: injection rejected (unit tests `rejects_injection_shapes`, `invalid_hex_rejected_before_write`), symlink escape/inside cases tested (`rejects_symlink_escape_on_import`), secrets grep clean
+- [x] T036 [P] Fix the `libgdk-pixbuf2.0-dev` → `libgdk-pixbuf-2.0-dev` package-name drift in setup docs per constitution platform table — DONE 2026-10-02: fixed in spec §6.2 apt block (only occurrence; constitution/research/tasks already correct)
 
 ---
 

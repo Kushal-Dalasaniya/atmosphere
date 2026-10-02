@@ -43,6 +43,11 @@ pub fn build_window(app: &libadwaita::Application) -> ApplicationWindow {
         move || stack.set_visible_child_name("create")
     });
 
+    let open_themes = Rc::new({
+        let stack = stack.clone();
+        move || stack.set_visible_child_name("themes")
+    });
+
     let reload_themes = Rc::new({
         let themes_holder = themes_holder.clone();
         move || {
@@ -52,12 +57,16 @@ pub fn build_window(app: &libadwaita::Application) -> ApplicationWindow {
         }
     });
 
-    let themes_view = ThemesView::new(open_create.clone(), reload_themes.clone());
+    let themes_view = ThemesView::new(
+        open_create.clone(),
+        reload_themes.clone(),
+        toast_overlay.clone(),
+    );
     themes_view.reload();
     let themes_widget = themes_view.widget.clone();
     *themes_holder.borrow_mut() = Some(themes_view);
 
-    let create_view = CreateView::new();
+    let create_view = CreateView::new(open_themes);
     let create_widget = create_view.widget.clone();
     *create_holder.borrow_mut() = Some(create_view);
 
@@ -72,10 +81,10 @@ pub fn build_window(app: &libadwaita::Application) -> ApplicationWindow {
             if s.visible_child_name().as_deref() == Some("themes") {
                 reload_themes();
             }
-            if s.visible_child_name().as_deref() == Some("create") {
-                if let Some(view) = create_holder.borrow().as_ref() {
-                    view.reload_wallpapers();
-                }
+            if s.visible_child_name().as_deref() == Some("create")
+                && let Some(view) = create_holder.borrow().as_ref()
+            {
+                view.reload_wallpapers();
             }
         }
     });
@@ -85,6 +94,20 @@ pub fn build_window(app: &libadwaita::Application) -> ApplicationWindow {
             "To theme the top bar and notifications, enable the “User Themes” extension (Extensions app), then log out and back in. Wallpaper and app colors still work.",
         );
         banner.set_revealed(true);
+        // Session-only dismissal: hidden until restart, never persisted.
+        banner.set_button_label(Some("Dismiss"));
+        banner.connect_button_clicked(|banner| banner.set_revealed(false));
+        root.prepend(&banner);
+    }
+
+    // Warn-only per spec §4.5: CSS files are still written when missing.
+    if !crate::theme::wallpaper::adw_gtk3_installed() {
+        let banner = Banner::new(
+            "The adw-gtk3 theme is not installed, so GTK 3 apps will not follow your theme. Wallpaper and app colors still apply.",
+        );
+        banner.set_revealed(true);
+        banner.set_button_label(Some("Dismiss"));
+        banner.connect_button_clicked(|banner| banner.set_revealed(false));
         root.prepend(&banner);
     }
 

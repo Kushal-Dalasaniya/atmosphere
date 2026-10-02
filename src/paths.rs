@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub const USER_THEME_EXTENSION: &str = "user-theme@gnome-shell-extensions.gcampax.github.com";
 
@@ -45,8 +45,10 @@ pub fn baseline_toml_path() -> PathBuf {
     baseline_dir().join("baseline.toml")
 }
 
-pub fn private_matugen_config_path() -> PathBuf {
-    home().join(".config/atmosphere/matugen.toml")
+/// Sibling backup path for a live `gtk.css`: `gtk.css.user-saved` next to it.
+/// Used for the one-time preservation of pre-Atmosphere user CSS.
+pub fn user_saved_backup_path(css_path: &Path) -> PathBuf {
+    css_path.with_file_name("gtk.css.user-saved")
 }
 
 pub fn alacritty_colors_path() -> PathBuf {
