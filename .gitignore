@@ -1,0 +1,22 @@
+# Rust artifacts
+/target/
+debug/
+release/
+*.rs.bk
+*.rlib
+*.rmeta
+*.prof*
+
+# Env / secrets (never commit; app needs no .env at runtime)
+.env*
+
+# Logs
+*.log
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
